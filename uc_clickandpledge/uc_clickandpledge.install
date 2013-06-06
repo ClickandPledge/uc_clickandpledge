@@ -1,0 +1,21 @@
+<?php
+function uc_clickandpledge_requirements($phase) {
+  $t = get_t();
+ 
+  $has_curl = function_exists('curl_init');
+ 
+  $requirements['uc_clickandpledge_curl'] = array(
+    'title' => $t('cURL'),
+    'value' => $has_curl ? $t('Enabled') : $t('Not found'),
+  );
+  if (!$has_curl) {
+    $requirements['uc_clickandpledge_curl']['severity'] = REQUIREMENT_ERROR;
+    $requirements['uc_clickandpledge_curl']['description'] = $t("Click & Pledge Module requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php'));
+  }
+ 
+  return $requirements;
+}
+function uc_clickandpledge_uninstall() {
+  // Delete related variables all at once.
+  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_testmodule_%%'");
+}

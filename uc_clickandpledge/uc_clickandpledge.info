@@ -1,0 +1,10 @@
+name = Click & Pledge
+description = Process payments using Click & Pledge
+dependencies[] = uc_payment
+dependencies[] = uc_credit
+package = Ubercart - payment
+core = 7.x
+version = "7.x-3.1"
+core = "7.x"
+project = "ubercart"
+datestamp = "1335375089"
