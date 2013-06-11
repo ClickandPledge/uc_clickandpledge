@@ -1,4 +1,14 @@
 <?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the uc_clickanspledge module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+
 function uc_clickandpledge_requirements($phase) {
   $t = get_t();
  
@@ -15,6 +25,11 @@ function uc_clickandpledge_requirements($phase) {
  
   return $requirements;
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+
 function uc_clickandpledge_uninstall() {
   // Delete related variables all at once.
   db_query("DELETE FROM {variable} WHERE name LIKE 'uc_testmodule_%%'");
