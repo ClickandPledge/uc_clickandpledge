@@ -1,557 +1,69 @@
 <?php
-/**
+/*
  * @file
- * Processes payments using Click & Pledge.
- */
+ * code for resume module
+*/
+function uc_clickandpledge_form_alter(&$form,\Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+    /* @var Drupal\Core\Entity\FieldableEntityInterface $entity */
+    //loading scripts
+	//$form['#attached']['library'][] = 'commerce_cnp/cnp-scripts';
+	
+	//change configuration button name
+	$form['#attached']['library'][] = 'uc_clickandpledge/cnp_uc_credit.styles';
+	
+	if($form_id == "cnpuber_settings_form")
+	{
+		$form['actions']['submit'] = array(
+			'#type' => 'submit',
+			'#name' => 'verify',
+			'#value' => t('Get the code'),
+			'#attributes' =>array("id"=>"cnpauth"),
+			//'#attributes' =>array("id"=>"cnpauth",'onsubmit' => 'return cnpValidate()'),
+		);
+		
+		/*$form['actions']['submit'] = array(
+			'#type' => 'submit',
+			'#name' => 'swdu',
+			'#value' => t('Signin with different user'),
+			'#attributes' =>array("id"=>"signinwithdifferentuser"),
+			
+		);*/
+		
+	}
+	if($form_id =="cnp-main-settings")
+	{
+		$form['edit-cnp-accid']['#validated'] = TRUE;
+		$form_state['rebuild'] = TRUE;
+	}
+	
+	if($form_id == 'commerce-checkout-flow-multistep-default'){
+    if(!empty($form['commerce_payment'])){
+      $payment_methods = $form['commerce_payment']['payment_methods']['#value'];
+      $order = $form_state['order'];
+      $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
 
+      $order_total = $order_wrapper->commerce_order_total->amount->value();
 
-/**
- * Implements hook_uc_payment_gateway().
- */
-function uc_clickandpledge_uc_payment_gateway() {
-  $gateways['clickandpledge'] = array(
-    'title' => t('Click & Pledge'),
-    'description' => t('Process credit card payments using Click & Pledge.'),
-    'settings' => 'uc_clickandpledge_settings_form',
-    'credit' => 'uc_clickandpledge_charge',
-    'credit_txn_types' => array(UC_CREDIT_AUTH_CAPTURE),
-  );
-
-  return $gateways;
-}
-
-/**
- * Callback for payment gateway settings.
- */
- 
-function uc_clickandpledge_settings_form($form, &$form_state) {
-  // Allow admin to set duplicate window.
-  $form['uc_cnp_currency'] = array(
-    '#type' => 'select',
-    '#title' => t('Currency'),
-    '#description' => t('Transactions can only be processed in one of the listed currencies.'),
-    '#default_value' => variable_get('uc_cnp_currency', 'USD'),
-    '#options' => drupal_map_assoc(array('USD', 'EUR', 'CAD', 'GBP')),
-  );
-  $form['uc_cnp_production_test'] = array(
-   '#type' => 'radios',
-   '#title' => t('select Environment'),
-   '#description' => t('Click & Pledge server'),
-   '#options' => array(t('Test'), t('Live'), ),
-   '#required' => TRUE,
-   '#default_value' => variable_get('uc_cnp_production_test', ''),
-  );
-  $form['api_id_key'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Account ID and GUID Key'),
-    '#description' => t('This information is required for Ubercart to interact with your payment gateway account.'),
-  );
-  $form['api_id_key']['uc_cnp_api_account_id'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Account ID'),
-    '#default_value' => variable_get('uc_cnp_api_account_id', ''),
-  );
-  $form['api_id_key']['uc_cnp_api_guid_key'] = array(
-    '#type' => 'textfield',
-    '#title' => t('API Account GUID'),
-    '#default_value' => variable_get('uc_cnp_api_guid_key', ''),
-  );
-  
-  $form['Organization_information'] = array(
-   '#type' => 'fieldset',
-   '#title' => t('Other Settings'),
-   '#description' => t('This information will be displayed on receipt.'),
-  );
-  $form['Organization_information']['uc_cnp_send_receipt'] = array(
-   '#type' => 'radios',
-   '#title' => t('Send Receipt'),
-   '#options' => array(t('Enable'), t('Disable'), ),
-   '#default_value' => variable_get('uc_cnp_send_receipt', ''),
-  );
-  $form['Organization_information']['uc_cnp_Organization_name'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Organization Name'),
-    '#default_value' => variable_get('uc_cnp_Organization_name', ''),
-  );
-  $form['Organization_information']['uc_cnp_thank_you_message'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Thank You Message'),
-    '#default_value' => variable_get('uc_cnp_thank_you_message', ''),
-  );
-  
-  $form['Organization_information']['uc_cnp_terms_condition'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Terms & Conditions'),
-    '#default_value' => variable_get('uc_cnp_terms_condition', ''),
-  );
-
-  return $form;
-}
-
-
-/**
- * Main handler for processing credit card transactions.
- */
-function uc_clickandpledge_charge($order_id, $amount, $data) {
-  // Load the order.
-
-$order = uc_order_load($order_id);
-$currency = $order->currency; 
-$cnp_currency = array('USD', 'EUR', 'CAD', 'GBP');
-  if (!in_array($currency, $cnp_currency)) {
-      drupal_set_message(t('At this time we only support (USD, EUR, CAD, GBP) currency only.'), 'error');
-      return FALSE;
-  } 
-  else {
-      if ($data['txn_type'] == 'auth_capture' && $data['txn_type'] != '') {
-          return _uc_clickandpledge_charge($order, $amount, $data);
+      if($order_total > 0){
+        if(!empty($payment_methods) && array_key_exists('commerce_payment_zero|commerce_payment_commerce_payment_zero', $payment_methods)){
+          unset($form['commerce_payment']['payment_method']['#options']['commerce_payment_zero|commerce_payment_commerce_payment_zero']);
+        }
       }
+      else{
+        $form['commerce_payment']['payment_method']['#default_value'] = 'commerce_payment_zero|commerce_payment_commerce_payment_zero';
+        $form['commerce_payment']['#attributes']['class'][] = 'commeprce_payment_pane_hide';
+      }
+
+
+    }
   }
+	
 }
 
-/**
- * Handles authorizations  Click & Pledge
- */
-function _uc_clickandpledge_charge($order, $amount, $data) {
-  global $user;
-  $accountid = variable_get('uc_cnp_api_account_id');
-  $guid = variable_get('uc_cnp_api_guid_key');
-  $mode = variable_get('uc_cnp_production_test');
-  $send_receipt = variable_get('uc_cnp_send_receipt');
-  $organization_name = variable_get('uc_cnp_Organization_name');
-  $thank_you_message = variable_get('uc_cnp_thank_you_message');
-  $terms_conditions = variable_get('uc_cnp_terms_condition'); 
-  if ($mode == 0) {
-      $mode = 'Test';
-  }
-  else {
-     $mode = 'Production';
-  }
- $billing_company = $order->billing_company;
- $bill_first_name   =  $order->billing_first_name;
- $billing_last_name =  $order->billing_last_name;
- $billing_phone     =  $order->billing_phone;
- if ($billing_phone == '') {
-     $billing_phone = '0000000000';
- }
- $billing_street1   =  $order->billing_street1;
- $billing_street2   =  $order->billing_street2;
- $billing_city      =  $order->billing_city;
- $billing_zone      = substr(uc_get_zone_code($order->billing_zone), 0, 40);
- $billing_postal_code= $order->billing_postal_code;
- $billing_country_code=  $order->billing_country;
- $delivery_company = $order->delivery_company;
- $delivery_first_name = $order->delivery_first_name;
- $delivery_last_name  = $order->delivery_last_name;
- $ship_email          = $order->primary_email;
- $delivery_phone      = $order->delivery_phone;
-  if ($delivery_phone == '') {
-      $delivery_phone = '0000000000';
-  }
- 
- $delivery_street1  = $order->delivery_street1;
- $delivery_street2  = $order->delivery_street2;
- $delivery_city     = $order->delivery_city;
- $delivery_zone     = substr(uc_get_zone_code($order->delivery_zone), 0, 40);
- $delivery_postal_code= $order->delivery_postal_code;
- $delivery_country_code=$order->delivery_country;
-  if (isset($order->payment_details['cc_owner']) && $order->payment_details['cc_owner'] != '') {
-      $cc_owner    = $order->payment_details['cc_owner'];
-  }
- else {
-    $cc_owner  = $bill_first_name . ' ' . $billing_last_name;
- }
- $cc_number            = $order->payment_details['cc_number'];
- $cc_exp_month         = $order->payment_details['cc_exp_month'];
-  if ($cc_exp_month < 10) {
-      $cc_exp_month = '0' . $cc_exp_month;
-  }
- $cc_exp_year          = substr($order->payment_details['cc_exp_year'], 2, 2);
-  if (isset($order->payment_details['cc_cvv']) && $order->payment_details['cc_cvv'] != '') {
-      $cc_cvv   = $order->payment_details['cc_cvv'];
- } 
- else {
-    $cc_cvv  ='';
- }
- 
-  $m_y  = $cc_exp_month . '/' . $cc_exp_year;
 
-  $dom = new DOMDocument('1.0', 'UTF-8');
-  $root = $dom->createElement('CnPAPI', '');
-  $root->setAttribute("xmlns", "urn:APISchema.xsd");
-  $root = $dom->appendChild($root);
 
-  $version=$dom->createElement("Version", "1.5");
-  $version=$root->appendChild($version);
 
-  $engine = $dom->createElement('Engine', '');
-  $engine = $root->appendChild($engine);
-  
-  $application = $dom->createElement('Application', '');
-  $application = $engine->appendChild($application);
 
-  $applicationid=$dom->createElement('ID', 'CnP:PaaS:UberCart:1.0');
-  $applicationid=$application->appendChild($applicationid);
 
-  $applicationname=$dom->createElement('Name', 'Salesforce:CnP_PaaS_SC_UberCart');
-  $applicationid=$application->appendChild($applicationname);
-
-  $applicationversion=$dom->createElement('Version', '1.0');
-  $applicationversion=$application->appendChild($applicationversion);
-
-  $request = $dom->createElement('Request', '');
-  $request = $engine->appendChild($request);
-
-  $operation = $dom->createElement('Operation', '');
-  $operation = $request->appendChild($operation);
-  
-  $operationtype = $dom->createElement('OperationType', 'Transaction');
-  $operationtype = $operation->appendChild($operationtype);
-
-  $ipaddress = $dom->createElement('IPAddress', $_SERVER['REMOTE_ADDR']);
-  $ipaddress = $operation->appendChild($ipaddress);
-
-  $authentication = $dom->createElement('Authentication', '');
-  $authentication = $request->appendChild($authentication);
-
-  $accounttype = $dom->createElement('AccountGuid', $guid ); 
-  $accounttype = $authentication->appendChild($accounttype);
-
-  $accountid = $dom->createElement('AccountID', $accountid );
-  $accountid = $authentication->appendChild($accountid);
-
-  $orders = $dom->createElement('Order', '');
-  $orders = $request->appendChild($orders);
-  
-  $ordermode = $dom->createElement('OrderMode', $mode);
-  $ordermode = $orders->appendChild($ordermode);
-  
-  $cardholder = $dom->createElement('CardHolder', '');
-  $cardholder = $orders->appendChild($cardholder);
-
-  $billinginfo = $dom->createElement('BillingInformation', '');
-  $billinginfo = $cardholder->appendChild($billinginfo);
-
-  $billfirst_name = $dom->createElement('BillingFirstName', $bill_first_name);
-  $billfirst_name = $billinginfo->appendChild($billfirst_name);
-
-  $billlast_name = $dom->createElement('BillingLastName', $billing_last_name);
-  $billlast_name = $billinginfo->appendChild($billlast_name);
-
-  $bill_email = $dom->createElement('BillingEmail', $ship_email);
-  $bill_email = $billinginfo->appendChild($bill_email);
-
-  $bill_phone = $dom->createElement('BillingPhone', $billing_phone);
-  $bill_phone = $billinginfo->appendChild($bill_phone);
-
-  $billingaddress = $dom->createElement('BillingAddress', '');
-  $billingaddress = $cardholder->appendChild($billingaddress);
-
-  $billingaddress1 = $dom->createElement('BillingAddress1', $billing_street1);
-  $billingaddress1 = $billingaddress->appendChild($billingaddress1);
-
-  $billingaddress2 = $dom->createElement('BillingAddress2', $billing_street2);
-  $billingaddress2 = $billingaddress->appendChild($billingaddress2);
-  
-  $billing_city = $dom->createElement('BillingCity', $billing_city);
-  $billing_city = $billingaddress->appendChild($billing_city);
-
-  $billing_state = $dom->createElement('BillingStateProvince', $billing_zone);
-  $billing_state = $billingaddress->appendChild($billing_state);
-
-  $billing_zip = $dom->createElement('BillingPostalCode', $billing_postal_code);
-  $billing_zip = $billingaddress->appendChild($billing_zip);
-
-  $billing_country = $dom->createElement('BillingCountryCode', $billing_country_code);
-  $billing_country = $billingaddress->appendChild($billing_country);
-
-  $shippinginfo = $dom->createElement('ShippingInformation', '');
-  $shippinginfo = $cardholder->appendChild($shippinginfo);
-  
-  $shippingcontact = $dom->createElement('ShippingContactInformation', '');
-  $shippingcontact = $shippinginfo->appendChild($shippingcontact);
-
-  $ship_first_name = $dom->createElement('ShippingFirstName', $delivery_first_name);
-  $ship_first_name = $shippingcontact->appendChild($ship_first_name);
-  
-  $ship_mi = $dom->createElement('ShippingMI', "");
-  $ship_mi = $shippingcontact->appendChild($ship_mi);
-   
-  $ship_last_name = $dom->createElement('ShippingLastName', $delivery_last_name);
-  $ship_last_name = $shippingcontact->appendChild($ship_last_name);
-
-  $shipemail = $dom->createElement('ShippingEmail', $ship_email);
-  $shipemail = $shippingcontact->appendChild($shipemail);
-    
-  $ship_phone = $dom->createElement('ShippingPhone', $delivery_phone);
-  $ship_phone = $shippingcontact->appendChild($ship_phone);    
-  
-  $shippingaddress = $dom->createElement('ShippingAddress', '');
-  $shippingaddress = $shippinginfo->appendChild($shippingaddress);
-
-  $ship_address1 = $dom->createElement('ShippingAddress1', substr($delivery_street1, 0, 60));
-  $ship_address1 = $shippingaddress->appendChild($ship_address1);
-
-  $ship_address2 = $dom->createElement('ShippingAddress2', substr($delivery_street2, 0, 60));
-  $ship_address2 = $shippingaddress->appendChild($ship_address2);
-
-  $ship_city = $dom->createElement('ShippingCity', substr($delivery_city, 0, 40));
-  $ship_city = $shippingaddress->appendChild($ship_city);
-
-  $ship_state = $dom->createElement('ShippingStateProvince', $delivery_zone);
-  $ship_state = $shippingaddress->appendChild($ship_state);
-
-  $ship_zip = $dom->createElement('ShippingPostalCode', substr($delivery_postal_code, 0, 20));
-  $ship_zip = $shippingaddress->appendChild($ship_zip);
-
-  $ship_country = $dom->createElement('ShippingCountryCode', $delivery_country_code);
-  $ship_country = $shippingaddress->appendChild($ship_country);
-
-   if ($billing_company != '' || $delivery_company != '' || $delivery_first_name != '' || $delivery_last_name != '') {
-      $customfieldlist = $dom->createElement('CustomFieldList', '');
-      $customfieldlist = $cardholder->appendChild($customfieldlist);
-
-   if ($billing_company != '') {
-       $customfield = $dom->createElement('CustomField', '');
-       $customfield = $customfieldlist->appendChild($customfield);
-
-       $fieldname = $dom->createElement('FieldName', 'Billing Company');
-       $fieldname = $customfield->appendChild($fieldname);
-
-       $fieldvalue = $dom->createElement('FieldValue', substr(str_replace('&', '&amp;', $billing_company), 0, 500));
-       $fieldvalue = $customfield->appendChild($fieldvalue);
-   }
-   
-   if ($delivery_first_name != '') {
-       $customfield = $dom->createElement('CustomField', '');
-       $customfield = $customfieldlist->appendChild($customfield);
-
-       $fieldname = $dom->createElement('FieldName', 'Delivery First Name');
-       $fieldname = $customfield->appendChild($fieldname);
-
-       $fieldvalue = $dom->createElement('FieldValue', substr(str_replace('&', '&amp;', $delivery_first_name), 0, 50));
-       $fieldvalue = $customfield->appendChild($fieldvalue);
-   }
-   
-   if ($delivery_last_name != '') {
-       $customfield = $dom->createElement('CustomField', '');
-       $customfield = $customfieldlist->appendChild($customfield);
-
-       $fieldname = $dom->createElement('FieldName', 'Delivery Last Name');
-       $fieldname = $customfield->appendChild($fieldname);
-
-       $fieldvalue = $dom->createElement('FieldValue', substr(str_replace('&', '&amp;', $delivery_last_name), 0, 50));
-       $fieldvalue = $customfield->appendChild($fieldvalue);
-   }
-
-   if ($delivery_company != '') {
-       $customfield = $dom->createElement('CustomField', '');
-       $customfield = $customfieldlist->appendChild($customfield);
-
-       $fieldname = $dom->createElement('FieldName', 'Delivery Company');
-       $fieldname = $customfield->appendChild($fieldname);
-
-       $fieldvalue = $dom->createElement('FieldValue', substr(str_replace('&', '&amp;', $delivery_company), 0, 500));
-       $fieldvalue = $customfield->appendChild($fieldvalue);
-   }
-
-  }
-
-  $paymentmethod = $dom->createElement('PaymentMethod', '');
-  $paymentmethod = $cardholder->appendChild($paymentmethod);
-
-  $payment_type = $dom->createElement('PaymentType', 'CreditCard');
-  $payment_type = $paymentmethod->appendChild($payment_type);
-
-  $creditcard = $dom->createElement('CreditCard', '');
-  $creditcard = $paymentmethod->appendChild($creditcard);
-  if (isset($cc_owner)) {
-      $credit_name = $dom->createElement('NameOnCard', $cc_owner);
-      $credit_name = $creditcard->appendChild($credit_name);
-  }
-  $credit_number = $dom->createElement('CardNumber', $cc_number);
-  $credit_number = $creditcard->appendChild($credit_number);
-
-  $credit_cvv = $dom->createElement('Cvv2', $cc_cvv);
-  $credit_cvv = $creditcard->appendChild($credit_cvv);
-
-  $credit_expdate = $dom->createElement('ExpirationDate', $m_y);
-  $credit_expdate = $creditcard->appendChild($credit_expdate);
-
-  $orderitemlist = $dom->createElement('OrderItemList', '');
-  $orderitemlist = $orders->appendChild($orderitemlist);
-  
-  foreach ($order->products as $product) {
-    $orderitem = $dom->createElement('OrderItem', '');
-    $orderitem = $orderitemlist->appendChild($orderitem);
-
-    $itemid = $dom->createElement('ItemID', substr($product->order_product_id, 0, 25));
-    $itemid = $orderitem->appendChild($itemid);
-
-    $itemid = $dom->createElement('ItemName', $product->title);
-    $itemid = $orderitem->appendChild($itemid);
-
-    $quntity = $dom->createElement('Quantity', $product->qty);
-    $quntity = $orderitem->appendChild($quntity);
-
-    $unitprice = $dom->createElement('UnitPrice', number_format($product->price, 2, '.', '')*100);
-    $unitprice = $orderitem->appendChild($unitprice);
-    $sku = $dom->createElement('SKU', $product->model);
-    $sku = $orderitem->appendChild($sku);
-
-    if (count($product->data['attributes']) > 0) {
-         $customfield_product = $dom->createElement('CustomFieldList', '');
-         $customfield_product = $orderitem->appendChild($customfield_product);
-         foreach ($product->data['attributes'] as $key => $val) {
-            foreach ($val as $new_val) {
-               $customfield = $dom->createElement('CustomField', '');
-               $customfield = $customfield_product->appendChild($customfield);
-               $fieldname = $dom->createElement('FieldName', $product->title . ' - ' . substr($key, 0, 25));
-               $fieldname = $customfield->appendChild($fieldname);
-
-               $fieldvalue = $dom->createElement('FieldValue', substr(str_replace('&', '&amp;', $new_val), 0, 500));
-               $fieldvalue = $customfield->appendChild($fieldvalue);
-            }
-          }
-      }
-   }
-   $total_ammou = '';
-   $coupon_code = '';
-   $couponvalue = '';
-  foreach ($order->line_items as $task) {
-    if ($task['type'] =="shipping") {
-        $shippingtitle = $task['title'];
-        $shippingvalue = $task['amount'];
-    }
-    if ($task['type'] == "tax") {
-        $tax_amounts = $task['amount']; 
-        $shipping_tax = $dom->createElement('ShippingTax', number_format($task['amount'], 2, '.', '')*100);
-    }
-    else {
-       $tax_amounts = 000;
-       $shipping_tax = $dom->createElement('ShippingTax', number_format(000, 2, '.', '')*100);
-    }
-    if ($task['type'] == "coupon") {
-       $coupontitle = $task['type'];
-       $couponvalue = $task['amount'];
-       $coupon_code = $task['data']['code'];
-     }
-    $total_ammou  = $total_ammou+ $task['amount'];
-  }
-   $shipping = $dom->createElement('Shipping', '');
-   $shipping = $orders->appendChild($shipping);
-   //$tax =  $order->line_items[2]['amount'];		
-   $shipping_method = $dom->createElement('ShippingMethod', $shippingtitle);
-   $shipping_method = $shipping->appendChild($shipping_method);
-
-   $shipping_value = $dom->createElement('ShippingValue', number_format($shippingvalue, 2, '.', '')*100);
-   $shipping_value = $shipping->appendChild($shipping_value);
-   $shipping_tax = $shipping->appendChild($shipping_tax);
-
-   if ($send_receipt == 0) {
-       $receipt = $dom->createElement('Receipt', '');
-       $receipt = $orders->appendChild($receipt);
-
-       $recipt_lang = $dom->createElement('Language', 'ENG');
-       $recipt_lang = $receipt->appendChild($recipt_lang);
-
-   if (trim($organization_name) != '') {
-       $recipt_org = $dom->createElement('OrganizationInformation', substr(str_replace('&', '&amp;', addslashes($organization_name)), 0, 1500));
-       $recipt_org = $receipt->appendChild($recipt_org);
-   }
-
-   if (trim($thank_you_message) != '') {
-       $recipt_thanks = $dom->createElement('ThankYouMessage', substr(str_replace('&', '&amp;', addslashes($thank_you_message)), 0, 500));
-       $recipt_thanks = $receipt->appendChild($recipt_thanks);
-   }
-
-   if (trim($terms_conditions) != '') {
-       $recipt_terms = $dom->createElement('TermsCondition', substr(str_replace('&', '&amp;', addslashes($terms_conditions)), 0, 1500));
-       $recipt_terms = $receipt->appendChild($recipt_terms);
-   }
-
-   $recipt_deduct = $dom->createElement('Deductible', '1');
-   $recipt_deduct = $receipt->appendChild($recipt_deduct);
-
-   $recipt_email = $dom->createElement('EmailNotificationList', '');
-   $recipt_email = $receipt->appendChild($recipt_email);
-
-   $email_note = $dom->createElement('NotificationEmail', $ship_email);
-   $email_note = $recipt_email->appendChild($email_note);
-
-  }
-
-  $transation = $dom->createElement('Transaction', '');
-  $transation = $orders->appendChild($transation);
-
-  $trans_type = $dom->createElement('TransactionType', 'Payment');
-  $trans_type = $transation->appendChild($trans_type);
-
-  $trans_desc = $dom->createElement('DynamicDescriptor', 'DynamicDescriptor');
-  $trans_desc = $transation->appendChild($trans_desc); 
- 
-  $trans_totals = $dom->createElement('CurrentTotals', '');
-  $trans_totals = $transation->appendChild($trans_totals);
-
-  $total_discount = $dom->createElement('TotalDiscount', number_format(-($couponvalue), 2, '.', '')*100);
-  $total_discount = $trans_totals->appendChild($total_discount);
-
-  $total_tax = $dom->createElement('TotalTax', number_format($tax_amounts, 2, '.', '')*100);
-  $total_tax = $trans_totals->appendChild($total_tax);
-
-  $total_ship = $dom->createElement('TotalShipping', number_format($shippingvalue, 2, '.', '')*100);
-  $total_ship = $trans_totals->appendChild($total_ship);
-
-  $total_deduct = $dom->createElement('TotalDeductible', '000');
-  $total_deduct = $trans_totals->appendChild($total_deduct);
-  $total_amount = $dom->createElement('Total', number_format($total_ammou, 2, '.', '')*100);
-  $total_amount = $trans_totals->appendChild($total_amount);
-
-  $trans_coupon = $dom->createElement('CouponCode', $coupon_code);
-  $trans_coupon = $transation->appendChild($trans_coupon);
-
-  $trans_coupon_discount = $dom->createElement('TransactionDiscount', number_format(-($couponvalue), 2, '.', '')*100);
-  $trans_coupon_discount = $transation->appendChild($trans_coupon_discount);
-  $strparam = $dom->saveXML();
-
-  $response = array();
-  $connect = array('soap_version' => SOAP_1_1, 'trace' => 1, 'exceptions' => 0);
-
-  $client = new SoapClient('https://paas.cloud.clickandpledge.com/paymentservice.svc?wsdl', $connect);
-  $cnp_params = array('instruction' => $strparam);
-  $cnp_response = $client->Operation($cnp_params); 
-
-  $authorizedcode = $cnp_response->OperationResult->AuthorizationCode;
-  $response_value = $cnp_response->OperationResult->ResultData;
-
-  $response_code = $cnp_response->OperationResult->ResultCode;
-  $transation_number = $cnp_response->OperationResult->TransactionNumber;
-  $xml_error = explode(":", $cnp_response->OperationResult->AdditionalInfo);
-
-  if ($response_code == 0 ) {
-      $result = array(
-       'success' => TRUE,
-      );
-
-  // Build info message.
-  $types = uc_credit_transaction_types();
-  $comment[] = t('<b>@type:</b> @amount', array('@type' => $types[$data['txn_type']], '@amount' => uc_currency_format($amount)));
-
-  // Save a comment to the order.
-  uc_order_comment_save($order->order_id, $user->uid, implode('<br />', $comment), 'admin');
-
-  // Build the response to the payment gateway API.
-  return $result + array(
-          'comment' => implode(', ', $comment),
-          'message' => implode('<br />', $comment),
-          'uid' => $user->uid,
-         );
-  }
-  else {
-    $message = check_plain($xml_error[2]);
-    drupal_set_message($message, 'error');
-    return FALSE;
-   }
-  }
-
+?>
 

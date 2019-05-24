@@ -1,0 +1,10 @@
+cnp_uc_credit.styles:
+    css:
+        theme:
+            css/cnp_uc_credit.css: {}
+    js:
+        js/cnp_uc_credit.js: {}
+    dependencies:
+        - core/jquery
+      
+

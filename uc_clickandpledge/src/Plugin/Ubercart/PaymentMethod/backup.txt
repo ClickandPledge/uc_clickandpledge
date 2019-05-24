@@ -1,0 +1,411 @@
+<?php
+namespace Drupal\uc_clickandpledge\Plugin\Ubercart\PaymentMethod;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\uc_clickandpledge\CnPCreditCardPaymentMethodBase;
+use Drupal\uc_order\OrderInterface;
+use SimpleXMLElement;
+use SoapClient;
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\HtmlCommand;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+//use Symfony\Component\HttpFoundation\RedirectResponse;
+/**
+ * @UbercartPaymentMethod(
+ *   id = "clickandpledge_payment_gateway",
+ *   name = @Translation("Click&Pledge Credit Card"),
+ * )
+ */
+class CnPCreditCard extends CnPCreditCardPaymentMethodBase
+{
+    
+    
+   /* public function __construct() {
+        $connection= \Drupal::database();
+		$prefix=$connection->tablePrefix();
+        $table_name = $prefix.'dp_cnp_uber_jbcnpaccountsinfo';
+		$sql = "SELECT * FROM " .$table_name;
+        $query = $connection->query($sql);
+		$query->allowRowCount = TRUE;
+		if ($query->rowCount()==-1) {
+                    $rpath=\Drupal::request()->getSchemeAndHttpHost().\Drupal::request()->getBaseUrl();
+                    $this->my_goto($rpath."/admin/cnpauth");
+		}
+		
+	
+    }*/
+    /*public function my_goto($path) { 
+     $response = new RedirectResponse($path, 302);
+     $response->send();
+     return;
+    }*/
+     /**
+   * {@inheritdoc}
+   */
+  
+  public function defaultConfiguration() {
+    return parent::defaultConfiguration() + [
+      'debug' => FALSE,
+      'cnp_uber_title' => '',
+      'cnp_uber_status_enable' => '',
+      'cnp_uber_desc' => '',
+      'cnp_uber_accid' => '',
+      'cnp_uber_camp_urls' => '',
+     
+    ];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state) {
+    $form = parent::buildConfigurationForm($form, $form_state);
+    $form['debug'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Debug'),
+      '#description' => $this->t('Log debug payment information to dblog when card is "charged" by this gateway.'),
+      '#default_value' => $this->configuration['debug'],
+    ];
+    
+    $cnpdlogo="<img src='".base_path().drupal_get_path('module', 'uc_clickandpledge')."/images/cnp_logo.png'>";
+    $form['cnp_dlogo'] = array(
+        '#prefix' => '<div class="cnp_dlogo"> '.$cnpdlogo,
+        '#suffix' => '</div>',
+    );
+		
+		
+    $form['heading_text'] = array(
+        '#markup' => '<div>
+        <p>Click & Pledge works by adding credit card fields on the checkout and then sending the details to Click & Pledge for verification.</p>
+        <p>You are logged in as <b>[ram@mail.com]</b></p>
+        <a class="button" href="cnpauth">Change User</a></div><br><hr/>'
+    );
+    $form['base_url_cnp_uber'] = [
+        '#type' => 'hidden',
+        '#default_value' => base_path(),
+        '#attributes' => array("id"=>"base_url_cnp_uber"),
+    ];
+    $form['cnp_uber_status_enable']=[
+        "#type"=> "checkboxes",
+        "#title"=>"Status",
+        //'#attributes' => array('checked' => 'checked'),
+        "#options"=> array("yes"=>"Enable Click & Pledge"),
+        '#default_value' => ($this->configuration['cnp_uber_status_enable']) ? $this->configuration['cnp_uber_status_enable'] : [],
+        '#prefix' => '<div class="container-inline cnp_bform_status_check">',
+        '#suffix' => '</div>',
+       ];
+    $form['cnp_uber_title'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Enter Title'),
+      '#default_value' => $this->configuration['cnp_uber_title']
+    ];
+    $form['cnp_uber_desc'] = [  
+        '#type' => 'textfield',  
+        '#title' => $this->t('Description'), 
+        '#default_value' => $this->configuration['cnp_uber_desc'],
+        '#prefix' => '<div class="cnp_bform_desc">',
+        '#suffix' => '</div>',
+    ];
+    $form['cnp_uber_accid'] = [
+        '#type' => 'select',
+        "#required"=> TRUE,
+        '#title' => t('C&P Account ID'),
+        '#default_value' => $this->configuration['cnp_uber_accid'],
+        '#prefix' => '<div id="cnp_accid_wrapper" class="cnp_bform_accid">',
+        '#suffix' => '</div>',
+       '#options' => $this->getUberAccountIDs(),
+       //'#options' => array(1=>1,2=>2),
+        '#ajax' => [
+            'callback' => [$this, 'getOptionsWithAjax'],
+            'wrapper' => 'cnp_uber_camp_urls',
+        ],	
+    ];
+    $form['cnp_uber_camp_urls'] = [
+        '#type' => 'select',
+        '#title' => t('Connect Campaign URL Alias'),
+        '#default_value' => ($this->configuration['cnp_uber_camp_urls']) ? $this->configuration['cnp_uber_camp_urls']:[],
+        '#options' => $this->getOptions($form_state),
+        '#prefix' => '<div id="cnp_uber_camp_urls" class="cnp_bform_camp_urls">',
+        '#suffix' => '</div>',
+    ];
+    return $form;
+  }
+  /**
+   * {@inheritdoc}
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state) {
+    
+    $this->configuration['debug'] = $form_state->getValue('debug');
+    $this->configuration['cnp_uber_status_enable'] = $form_state->getValue('cnp_uber_status_enable');
+    $this->configuration['cnp_uber_title'] = $form_state->getValue('cnp_uber_title');
+    $this->configuration['cnp_uber_desc'] = $form_state->getValue('cnp_uber_desc');
+    $this->configuration['cnp_uber_accid'] = $form_state->getValue('cnp_uber_accid');
+    $this->configuration['cnp_uber_camp_urls'] = $form_state->getValue('cnp_uber_camp_urls');
+    
+    return parent::submitConfigurationForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function chargeCard(OrderInterface $order, $amount, $txn_type, $reference = NULL) {
+    $user = \Drupal::currentUser();
+
+    // cc_exp_month and cc_exp_year are also validated by
+    // CreditCardPaymentMethodBase::validateExpirationDate().
+    $month = $order->payment_details['cc_exp_month'];
+    $year = $order->payment_details['cc_exp_year'];
+    if ($year < 100) {
+      $year = $year + 2000;
+    }
+
+    // Card is expired at 0:00 on the first day of the next month.
+    $expiration_date = mktime(0, 0, 0, $month + 1, 1, $year);
+
+    // Conditions for failure are described in file documentation block above.
+    // All other transactions will succeed.
+    if ($order->payment_details['cc_number'] == '0000000000000000' ||
+      (isset($order->payment_details['cc_cvv']) && $order->payment_details['cc_cvv'] == '000') ||
+      ($expiration_date - REQUEST_TIME) <= 0     ||
+      $amount == 12.34                           ||
+      $order->billing_first_name == 'Fictitious' ||
+      $order->billing_phone == '8675309'            ) {
+      $success = FALSE;
+    }
+    else {
+      $success = TRUE;
+    }
+
+    // The information for the payment is in the $order->payment_details array.
+    if ($this->configuration['debug']) {
+      \Drupal::logger('uc_credit')->notice('Test gateway payment details @details.', ['@details' => print_r($order->payment_details, TRUE)]);
+    }
+
+    if ($success) {
+      $message = $this->t('Credit card charged: @amount', ['@amount' => uc_currency_format($amount)]);
+      uc_order_comment_save($order->id(), $user->id(), $message, 'admin');
+    }
+    else {
+      $message = $this->t('Credit card charge failed.');
+      uc_order_comment_save($order->id(), $user->id(), $message, 'admin');
+    }
+
+    $result = [
+      'success' => $success,
+      'comment' => $this->t('Card charged, resolution code: 0022548315'),
+      'message' => $success ? $this->t('Credit card payment processed successfully.') : $this->t('Credit card charge failed.'),
+      'uid' => $user->id(),
+    ];
+
+    return $result;
+  }
+    public function getUberAccountIDs()
+    {
+        $database = \Drupal::database();
+        $prefix= $database->tablePrefix();
+        $table_name = $prefix.'dp_cnp_uber_jbcnpaccountsinfo';
+        $query = $database->query("SELECT * FROM ".$table_name);
+        $result = $query->fetchAll();
+        $opt=array();
+        $opt['']="-select-";
+        foreach($result as $acc )
+        {
+            $opt[$acc->cnpaccountsinfo_orgid]=$acc->cnpaccountsinfo_orgid." [".$acc->cnpaccountsinfo_orgname."]";
+        }
+        return $opt;
+    }
+    public function getOptionsWithAjax(array $form, FormStateInterface $form_state) {
+		return $form['cnp_uber_camp_url'];
+    }
+    /**
+   * Get options for second field.
+   */
+    public function getOptions(FormStateInterface $form_state) {
+		
+		$camrtrnval['']=array();
+        if ($form_state->getValue('cnp_uber_accid') == '') {
+			
+                    $camrtrnval['']="--Select Campaign Name--";
+                    $accid=$this->configuration['cnp_uber_accid'];
+                    $opt=$this->cnp_getCnPUserEmailAccountList($accid)[0];
+                    //$opt=(array)$opt;
+                    //print_r($opt);
+                    if(!empty($opt))
+                    {
+                        if(is_array($opt))
+                        {
+
+                            for($in = 0 ; $in < count($opt);$in++)
+                            { 
+                                $camrtrnval[$opt[$in]->alias] = $opt[$in]->name." (".$opt[$in]->alias.")" ;
+                            }
+                        }
+                        else
+                        {
+                            $camrtrnval[$opt->alias] = $opt->name." (".$opt->alias.")" ;
+                        }
+                    }
+                    else
+                    {
+                            $camrtrnval[""]="Campaign URL Alias are not found";
+                    }
+			
+		  if($this->configuration['cnp_uber_camp_urls']!="")
+		  {
+			//$camrtrnval[$config->get('cnp.cnp_camp_urls')]=$config->get('cnp.cnp_camp_urls');
+		  }
+		  else
+		  {
+			  $camrtrnval['']="--Select Campaign Name--";
+		  }
+        }
+        else {
+            $optionData= $this->cnp_getCnPUserEmailAccountList($form_state->getValue('cnp_uber_accid'));
+            //print_r($options);
+
+            /*$paymentCards=$optionData[1];
+            $response = new AjaxResponse();
+            $response->addCommand(new HtmlCommand('#edit-cnp-payment-methdos', $paymentCards));
+            */
+            $camrtrnval['']="--Select Campaign Name--";
+            $cnpsel="";
+            //$config=$this->config("cnp.mainsettings");
+
+            $camrtrnval['']="--Select Campaign Name--";
+            $options=$optionData[0];
+
+            if(count($options)==1)
+            {
+                $camrtrnval[$options->alias] = $options->name." (".$options->alias.")" ;
+            }
+            else
+            {
+                //sort($options);
+                for($inc = 0 ; $inc < count($options);$inc++)
+                { 
+                    $camrtrnval[$options[$inc]->alias] = $options[$inc]->name." (".$options[$inc]->alias.")" ;
+                }
+            }
+        }	
+        natcasesort($camrtrnval);
+        return $camrtrnval;
+    }    
+     public function cnp_getCnPUserEmailAccountList($cnpacid) {
+        $cnpwcaccountid = $cnpacid;
+        //$paymntgtcls = new WC_Gateway_ClickandPledge();
+        $totRes=array();
+        
+       $cnprtrntxt = $this->getwcCnPConnectCampaigns($cnpwcaccountid);
+	   $totRes[]=$cnprtrntxt;
+       //return $cnprtrntxt;
+        $Clist=array();
+       $cnprtrnpaymentstxt = $this->getWCCnPactivePaymentList($cnpwcaccountid);
+	 // print_r($cnprtrnpaymentstxt);
+	  //echo ;
+	  //exit("No Records");
+	  if(count($cnprtrnpaymentstxt)>0)
+	  {
+		foreach($cnprtrnpaymentstxt as $obj=>$cli)
+		{
+		   foreach($cli as $key=>$value)
+		   {
+			   if($value==1)
+			   {
+				   $Clist[$key]=$key;
+			   }
+		   }
+		}
+	  }
+	  else
+	  {
+		  $Clist=array();
+	  }
+	  $totRes[]=$Clist;
+	  return $totRes;
+       //return $allResponse=$cnprtrntxt."||".$cnprtrnpaymentstxt;
+       //echo $cnprtrntxt."||".$cnprtrnpaymentstxt;
+     // die();
+    }
+    public function getwcCnPConnectCampaigns($cnpaccid)
+    {
+        
+        $cnpacountid = $cnpaccid;
+        $cnpaccountGUID = $this->getwcCnPAccountGUID($cnpacountid);
+        //print_r($cnpaccountGUID);
+        $cnpUID = "14059359-D8E8-41C3-B628-E7E030537905";
+        $cnpKey = "5DC1B75A-7EFA-4C01-BDCD-E02C536313A3";
+        $connect  = array('soap_version' => SOAP_1_1, 'trace' => 1, 'exceptions' => 0);
+        $default = array( 
+            // We shall only enable TRACING & EXCEPTION for dev 
+            'trace' => 1, 
+            'exceptions' => true, 
+            'cache_wsdl' => WSDL_CACHE_NONE, 
+            'features' => SOAP_SINGLE_ELEMENT_ARRAYS,
+        );
+        $client= new SoapClient("https://resources.connect.clickandpledge.com/wordpress/Auth2.wsdl",$connect);
+        if( isset($cnpacountid) && $cnpacountid !="" && isset($cnpaccountGUID) &&  $cnpaccountGUID !="")
+        { 
+            $xmlr  = new SimpleXMLElement("<GetActiveCampaignList2></GetActiveCampaignList2>");
+			
+            $cnpsel ="";
+            $xmlr->addChild('accountId', $cnpacountid);
+            $xmlr->addChild('AccountGUID', $cnpaccountGUID);
+            $xmlr->addChild('username', $cnpUID);
+            $xmlr->addChild('password', $cnpKey);
+			
+            $response = $client->GetActiveCampaignList2($xmlr); 
+            $responsearr =  $response->GetActiveCampaignList2Result->connectCampaign;
+			
+        }
+		else
+		{
+			//$responsearr=(object)array(""=>"No Campaigns Found");
+			$responsearr=array();
+		}
+       return $responsearr;
+            
+    }
+    public function getwcCnPAccountGUID($accid)
+    {
+       
+        $database = \Drupal::database();
+        $prefix=$database->tablePrefix();
+        $table_name = $prefix.'dp_cnp_uber_jbcnpaccountsinfo';
+        $cnpAccountGUId ="";
+        $sql = "SELECT * FROM " . $table_name." where cnpaccountsinfo_orgid ='".$accid."'";
+        $query = $database->query($sql);
+        $result = $query->fetchAssoc();
+        //print_r($result);
+        $count = sizeof($result);
+        $cnpAccountGUId  = $result['cnpaccountsinfo_accountguid'];
+        return $cnpAccountGUId;
+
+    }
+    public function getWCCnPactivePaymentList($cnpaccid)
+    {
+            $cmpacntacptdcards = "";
+            $cnpacountid = $cnpaccid;
+            $cnpaccountGUID = $this->getwcCnPAccountGUID($cnpacountid);
+            $cnpUID = "14059359-D8E8-41C3-B628-E7E030537905";
+            $cnpKey = "5DC1B75A-7EFA-4C01-BDCD-E02C536313A3";
+            $connect1  = array('soap_version' => SOAP_1_1, 'trace' => 1, 'exceptions' => 0);
+            $client1   = new SoapClient('https://resources.connect.clickandpledge.com/wordpress/Auth2.wsdl', $connect1);
+            if( isset($cnpacountid) && $cnpacountid !="" && isset($cnpaccountGUID) &&  $cnpaccountGUID !="")
+            { 
+                    $xmlr1  = new SimpleXMLElement("<GetAccountDetail></GetAccountDetail>");
+                    $xmlr1->addChild('accountId',$cnpacountid);
+                    $xmlr1->addChild('accountGUID',$cnpaccountGUID);
+                    $xmlr1->addChild('username',$cnpUID);
+                    $xmlr1->addChild('password',$cnpKey);
+                    $response1                    =  $client1->GetAccountDetail($xmlr1);
+                    $responsearramex              =  $response1->GetAccountDetailResult->Amex;
+                    $responsearrJcb               =  $response1->GetAccountDetailResult->Jcb;
+                    $responsearrMaster            =  $response1->GetAccountDetailResult->Master;
+                    $responsearrVisa              =  $response1->GetAccountDetailResult->Visa;
+                    $responsearrDiscover          =  $response1->GetAccountDetailResult->Discover;
+                    $responsearrecheck            =  $response1->GetAccountDetailResult->Ach;
+                    $responsearrCustomPaymentType =  $response1->GetAccountDetailResult->CustomPaymentType;
+                    return $response1;
+            } 
+    }
+}
+?>

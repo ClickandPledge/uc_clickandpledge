@@ -1,0 +1,299 @@
+/**
+ * @file
+ * Styles for clickandpledge payment gateway module.
+ */
+.tester{color:red;}
+.uc-credit-cctype {
+  vertical-align: middle;
+  margin-bottom: 3px;
+}
+.cnp_tooltip{
+    background: #20ADFF;
+    color: #fff;
+    padding: 0px 7px;
+    border-radius: 63%;
+    margin-left: 193px;
+    margin-top: -23px;
+    position: absolute !important;
+}
+
+.cnp_testmode{
+	color:#f15a33;
+}
+.uc-credit-form.cnp_uc_credit_form label
+{
+	width:13.5em !important;
+}
+
+/**
+ * Tooltip Styles
+ */
+
+/* Add this attribute to the element that needs a tooltip */
+[data-tooltip] {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+}
+
+
+[data-tooltip]:before,
+[data-tooltip]:after {
+  visibility: hidden;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+  filter: progid: DXImageTransform.Microsoft.Alpha(Opacity=0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+[data-tooltip]:before {
+  position: absolute;
+  bottom: 150%;
+  left: 50%;
+  margin-bottom: 5px;
+  margin-left: -80px;
+  padding: 7px 20px;
+  width: 160px;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  background-color: #000;
+  background-color: hsla(0, 0%, 20%, 0.9);
+  color: #fff;
+  content: attr(data-tooltip);
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+
+[data-tooltip]:after {
+  position: absolute;
+  bottom: 150%;
+  left: 50%;
+  margin-left: -5px;
+  width: 0;
+  border-top: 5px solid #000;
+  border-top: 5px solid hsla(0, 0%, 20%, 0.9);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: " ";
+  font-size: 0;
+  line-height: 0;
+}
+
+
+[data-tooltip]:hover:before,
+[data-tooltip]:hover:after {
+  visibility: visible;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=100)";
+  filter: progid: DXImageTransform.Microsoft.Alpha(Opacity=100);
+  opacity: 1;
+}
+.uc-credit-form label {
+  clear: left; /* LTR */
+  float: left; /* LTR */
+  margin: 2px 0;
+  padding-top: 5px;
+  width: 10em;
+}
+[dir="rtl"] .uc-credit-form label {
+  clear: right;
+  float: right;
+}
+
+.uc-credit-form input,
+.uc-credit-form select {
+  float: left; /* LTR */
+  margin: 2px;
+}
+[dir="rtl"] .uc-credit-form input,
+[dir="rtl"] .uc-credit-form select {
+  float: right;
+}
+
+.uc-credit-form .field-suffix {
+  float: left; /* LTR */
+  margin: 2px;
+  padding-top: 5px;
+}
+[dir="rtl"] .uc-credit-form .field-suffix {
+  float: right;
+}
+/*Commerce CNP Styles*/
+.cnp_cvv_help_image{
+	display:none;
+	position:absolute;
+}
+.cvv_popup_div
+{
+	margin-top: -66px;
+    margin-left: 178px;
+	margin-bottom:50px;
+}
+.cnp-credit-cvv-help{
+	width:20px;
+}
+
+.recurr_option{
+	display:none;
+}
+#payment_options_wrapper{
+	margin-left:18px;
+}
+/*#rfrshtokens{
+	margin-left: 476px;
+    margin-top: -33px;
+    position: absolute;
+}*/
+#edit-cnp-accid{
+/*
+	min-width:400px !important;
+	width:auto;
+*/
+}
+/*.recurring_div_show{
+	display:block !important;
+}*/
+.recurring_div_hide
+{
+	display:none;
+}
+.hideandshow{
+	display:block !important;
+}
+span.redcolor {
+    color: red;
+}
+/*#cnp-echeck-division{
+	display:none;
+}
+#cnp-ref-division{
+	display:none;
+}*/
+
+.cnpstar_color{
+	color: #f00;
+}
+
+.field--label-inline .field__label::after {
+  content: '';
+}
+
+
+
+/* --------------- Payment Form CSS -------------- */
+
+.cnp_logo{
+	float: right;
+}
+.cnp_fef_front_end{
+	padding:10px 20px !important;
+	background-color:#f3f3f3 !important;
+	color:#444 !important;
+}
+
+.cnp_payment_heading{
+	font-size: 20px !important;
+    font-weight: bold !important;
+    color: #f15a33 !important;
+}
+.cnp_fef_front_end p{
+	margin-bottom:10px !important;
+}
+.cnp_form_recurring_label{
+	font-size:16px !important;
+}
+.cnp_form_payment_options input[type="radio"] {
+	width:15px;
+	height:15px;
+}
+.cnp_form_payment_options input[type="radio"]:checked:after {
+	background-color: #f00 !important;
+}
+.cnp_accepted_payment_icons img{
+	padding-right:6px !important;
+	}
+.cnp_form_cardnumber input{
+	width: 100% !important;
+}
+.cnp_form_security_code label{
+	width: 100% !important;
+}
+.cnp_form_card_owner input{
+	width: 100% !important;
+}
+.cnp_form_security_code input{
+	width: 100% !important;
+}
+.cnp_form_periodcity input{
+	width: 100% !important;
+}
+.cnp_form_noof_payments input{
+	/*width: 100% !important;*/
+}
+.credit-card-form__expiration {
+	width: 100%;
+	display: table !important;
+}
+.credit-card-form__expiration .form-item{
+	display: block !important;
+}
+.credit-card-form__expiration select{
+	width: 100%;
+}
+.only_expiry_date{
+	padding-right: 15px;
+}
+.only_year, .only_expiry_date{	
+	display: table-cell;
+}
+.only_year label:after{
+	background-image: none;
+}
+.cnp_form_recurr_options_label p{
+	font-size: 15px !important;
+    padding-top: 10px !important;
+}
+.cnp-test-bottom{margin-bottom:15px;}
+/*.cnp_form_periodcity  select{
+	width: 100% !important;
+}
+.cnp_form_noof_payments input{
+	width: 100% !important;
+}
+.cnp_form_recuring_type_option select{
+	width: 100% !important;
+}*/
+
+/* --------------- Dashboard CSS -------------- */
+
+[class^="cnp_bform"], [class*="cnp_bform"] {
+	margin-top: 16px;
+}
+.cnp_bform_receipt_settings h2{
+	border-bottom: 1px solid #ccc;
+	padding-bottom: 10px;
+	color: #0071b3;
+	padding-top: 20px;
+}
+.recurring_set{
+	border-bottom: 1px solid #ccc;
+	padding-bottom: 10px;
+	color: #0071b3;
+	padding-top: 40px;
+}
+.cnp_bform_status_check label.option::after,
+.cnp_bform_payment_cards label.option::after {
+    content: ' ' !important;
+}
+.cnp_payment_options_wrapper label.option::after,
+.cnp_form_payment_options label.option::after {
+	content: ' ' !important;
+	margin-right: 10px;
+}
+.signin_with_diff_user {
+    margin-bottom: -40px;
+    margin-left: 100px;
+}

@@ -1,0 +1,36 @@
+ubercartcnp.cnpuber_auth_form:  
+  path: '/admin/cnpauth'  
+  defaults:  
+    _form: '\Drupal\uc_clickandpledge\Form\CnPUberAuth'  
+    _title: 'Click & Pledge Authentication'  
+  requirements:  
+    _permission: 'access administration pages'  
+  options:  
+    _admin_route: TRUE
+ubercartcnp.cnpuber_settings_form:  
+  path: '/admin/cnpuber_settings'  
+  defaults:  
+    _form: '\Drupal\uc_clickandpledge\Form\CnPUberSettings'  
+    _title: 'Click & Pledge Payment Settings'  
+  requirements:  
+    _permission: 'access administration pages'  
+  options:  
+    _admin_route: TRUE
+ubercartcnp.cnp_ajax_request:
+    path: '/admin/cnp_module/ajax/{variable}'
+    defaults:
+        _controller: '\Drupal\uc_clickandpledge\Controller\CnPUberController::ajaxCallback'
+    requirements:
+        _permission: 'access administration pages'
+ubercartcnp.cnp_ajax_accounts_request:
+    path: '/admin/cnp_module/refreshaccounts/{variable}'
+    defaults:
+        _controller: '\Drupal\uc_clickandpledge\Controller\CnPUberController::getRefreshAccounts'
+    requirements:
+        _permission: 'access administration pages'
+ubercartcnp.cnp_swdu:
+    path: '/admin/different_user_signin'
+    defaults:
+        _controller: '\Drupal\uc_clickandpledge\Controller\CnPUberController::signinDifferentUser'
+    requirements:
+        _permission: 'access administration pages'

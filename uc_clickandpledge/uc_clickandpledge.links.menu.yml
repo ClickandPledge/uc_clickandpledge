@@ -1,0 +1,6 @@
+hello_world.admin:
+  title: 'Click & Pledge Payment Settings'
+  description: 'click and pledge payment settings page'
+  parent: uc_store.admin.store.config
+  route_name: ubercartcnp.cnpuber_settings_form
+  weight: 100

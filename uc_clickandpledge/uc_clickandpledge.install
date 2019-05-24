@@ -1,36 +1,216 @@
 <?php
 
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
 /**
  * @file
- * Install, update and uninstall functions for the uc_clickanspledge module.
+ * Install, update and uninstall functions for the profilename install profile.
  */
-
+ 
 /**
- * Implements hook_requirements().
- */
+* Implements hook_install().
+*
+* Creates some default entries on this module custom table.
+*
+* @see hook_install()
+*
+* @ingroup lotus
+*/
+/*function commerce_cnp_install(){
+  drupal_install_schema('commerce_cnp');// where module== name of your module
+}*/
 
-function uc_clickandpledge_requirements($phase) {
-  $t = get_t();
- 
-  $has_curl = function_exists('curl_init');
- 
-  $requirements['uc_clickandpledge_curl'] = array(
-    'title' => $t('cURL'),
-    'value' => $has_curl ? $t('Enabled') : $t('Not found'),
+
+function my_goto($path) { 
+  $response = new RedirectResponse($path, 302);
+  $response->send();
+  return;
+}
+
+function uc_clickandpledge_install() {
+
+  $database = \Drupal::database();
+  // Add a default entry.
+  $fields = array(
+    'cnpsettingsinfo_id' => 1,
+    'cnpsettingsinfo_clientid' => 'connectwordpressplugin',
+    'cnpsettingsinfo_clentsecret' => 'zh6zoyYXzsyK9fjVQGd8m+ap4o1qP2rs5w/CO2fZngqYjidqZ0Fhbhi1zc/SJ5zl',
+    'cnpsettingsinfo_granttype' => 'password',
+    'cnpsettingsinfo_scope' => 'openid profile offline_access',
   );
-  if (!$has_curl) {
-    $requirements['uc_clickandpledge_curl']['severity'] = REQUIREMENT_ERROR;
-    $requirements['uc_clickandpledge_curl']['description'] = $t("Click & Pledge Module requires the PHP <a href='!curl_url'>cURL</a> library.", array('!curl_url' => 'http://php.net/manual/en/curl.setup.php'));
-  }
+  $database->insert('dp_cnp_uber_jbcnpsettingsinfo')
+    ->fields($fields)
+    ->execute();
  
-  return $requirements;
+  
+  // Add another entry.
+    my_goto("cnpauth");
+}
+// Remove tables. on uninstallation
+function uc_clickandpledge_uninstall() {
+	drupal_uninstall_schema('uc_clickandpledge');
+	\Drupal::configFactory()->getEditable('cnp.mainsettings')->delete();
+	// \Drupal::configFactory()->getEditable('cnp.settings')->delete();   
+     
 }
 
 /**
- * Implements hook_uninstall().
- */
+* Implements hook_schema().
+*
+* Defines the database tables used by this module.
+*
+* @see hook_schema()
+*
+* 
+*/
 
-function uc_clickandpledge_uninstall() {
-  // Delete related variables all at once.
-  db_query("DELETE FROM {variable} WHERE name LIKE 'uc_testmodule_%%'");
+function uc_clickandpledge_schema(){
+  
+	$schema= array();
+	$schema["dp_cnp_uber_jbcnpaccountsinfo"] = array(
+	'description' => 'Stores Account Informatiom',
+	"fields"=>array(
+		'cnpaccountsinfo_id' => array(
+			'type' => 'serial',
+			'not null' => TRUE,
+			'unsigned' => TRUE,
+			'description' => 'accountID',
+		),
+		'cnpaccountsinfo_orgid' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length' => 100,
+			'description' => "CnP Organisation ID",
+		),
+		'cnpaccountsinfo_orgname' => array(
+			'type' => 'varchar',
+			'length' => 250,
+			'not null' => TRUE,
+			'description' => 'CnP Organisation Name',
+		),
+		 'cnpaccountsinfo_accountguid' => array(
+			'type' => 'varchar',
+			'length' => 250,
+			'not null' => TRUE,
+			'description' => 'Account GUID',
+		),
+		'cnpaccountsinfo_userfirstname' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length'=>250,
+			'description' => 'User Firstname',
+		),
+		'cnpaccountsinfo_userlastname' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length'=>250,
+			'description' => 'User Lastname',
+		),
+		'cnpaccountsinfo_userid' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length'=>250,
+			'description' => 'User ID',
+		),
+		'cnpaccountsinfo_crtdon' => array(
+			'type' => 'varchar',
+			'mysql_type' => 'timestamp DEFAULT CURRENT_TIMESTAMP',
+			'not null' => TRUE,
+			'description' => 'CR Time',
+		),
+		'cnpaccountsinfo_crtdby' => array(
+			'type' => 'varchar',
+			'mysql_type' => 'timestamp DEFAULT CURRENT_TIMESTAMP',
+			'not null' => TRUE,
+			'description' => 'by Time',
+		),
+		
+		),
+		'primary key' => array('cnpaccountsinfo_id'),
+	);
+	//2nd Table Schema
+	$schema["dp_cnp_uber_jbcnpsettingsinfo"] = array(
+		'description' => 'Settings Informatiom',
+	"fields"=>array(
+		'cnpsettingsinfo_id' => array(
+			'type' => 'int',
+			'not null' => TRUE,
+			'description' => 'Settings ID',
+		),
+		'cnpsettingsinfo_clientid' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length' => 255,
+			'description' => "Client ID",
+		),
+		'cnpsettingsinfo_clentsecret' => array(
+			'type' => 'varchar',
+			'length' => 255,
+			'not null' => TRUE,
+			'description' => 'Client Screte key',
+		),
+		 'cnpsettingsinfo_granttype' => array(
+			'type' => 'varchar',
+			'length' => 255,
+			'not null' => TRUE,
+			'description' => 'Grant Type',
+		),
+		'cnpsettingsinfo_scope' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length'=>255,
+			'description' => 'Scope',
+		),
+		
+		)
+	);
+	$schema["dp_cnp_uber_jbcnptokeninfo"] = array(
+		'description' => 'Stores Token Informatiom',
+	"fields"=>array(
+		'cnptokeninfo_id' => array(
+			'type' => 'serial',
+			'not null' => TRUE,
+			'unsigned' => TRUE,
+			'description' => 'TokenID',
+		),
+		'cnptokeninfo_username' => array(
+			'type' => 'varchar',
+			'not null' => TRUE,
+			'length' => 255,
+			'description' => "Token Username",
+		),
+		'cnptokeninfo_code' => array(
+			'type' => 'varchar',
+			'length' => 250,
+			'not null' => TRUE,
+			'description' => 'Token Code',
+		),
+		 'cnptokeninfo_accesstoken' => array(
+			'type' => 'text',
+			'not null' => TRUE,
+			'description' => 'Access Token',
+		),
+		'cnptokeninfo_refreshtoken' => array(
+			'type' => 'text',
+			'not null' => TRUE,
+			'description' => 'Refresh Token',
+		),
+		'cnptokeninfo_date_added' => array(
+			'type' => 'varchar',
+			'mysql_type' => 'timestamp DEFAULT CURRENT_TIMESTAMP',
+			'not null' => TRUE,
+		),
+		'cnptokeninfo_date_modified' => array(
+			'type' => 'varchar',
+			'mysql_type' => 'timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP',
+			'not null' => TRUE,
+		),
+		
+		
+		),
+		 'primary key' => array('cnptokeninfo_id'),
+	
+	);
+	return $schema;
 }
+
